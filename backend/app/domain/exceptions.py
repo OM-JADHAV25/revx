@@ -4,3 +4,7 @@ class DomainError(Exception):
 
 class InvalidMoneyError(DomainError):
     """Raised when a Money value violates domain rules."""
+
+
+class InvalidRecoveryProbabilityError(DomainError):
+    """Raised when a recovery probability is outside the valid range."""
