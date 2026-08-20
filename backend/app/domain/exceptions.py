@@ -12,3 +12,11 @@ class InvalidRecoveryProbabilityError(DomainError):
 
 class InvalidRiskScoreError(DomainError):
     """Raised when a risk score is outside the valid range."""
+
+
+class InvalidRecoveryStateTransitionError(DomainError):
+    """Raised when a recovery case attempts an invalid state transition."""
+
+
+class InvalidRecoveryCaseError(DomainError):
+    """Raised when a recovery case violates a domain invariant."""
