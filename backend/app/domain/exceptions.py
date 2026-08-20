@@ -20,3 +20,7 @@ class InvalidRecoveryStateTransitionError(DomainError):
 
 class InvalidRecoveryCaseError(DomainError):
     """Raised when a recovery case violates a domain invariant."""
+
+
+class InvalidRecoveryProposalError(DomainError):
+    """Raised when a recovery proposal violates a domain invariant."""
