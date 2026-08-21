@@ -88,6 +88,17 @@ def test_rejects_low_probability_proposal() -> None:
 
     assert evaluation.decision == PolicyDecision.REJECTED
 
+def test_approves_retry_when_below_maximum_retry_count() -> None:
+    policy = create_policy()
+
+    recovery_case = create_recovery_case(retry_count=2)
+
+    proposal = create_proposal(recovery_case_id=recovery_case.recovery_case_id)
+
+    evaluation = policy.evaluate(recovery_case=recovery_case,proposal=proposal)
+
+    assert evaluation.decision == PolicyDecision.APPROVED
+
 
 def test_rejects_retry_when_maximum_retry_count_reached() -> None:
     policy = create_policy()
