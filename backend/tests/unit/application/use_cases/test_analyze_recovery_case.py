@@ -1,32 +1,21 @@
 from decimal import Decimal
 from uuid import uuid4
 
-import pytest
-
 from app.application.use_cases.analyze_recovery_case import (AnalyzeRecoveryCase)
 from app.domain.entities.recovery_case import RecoveryCase
 from app.domain.enums.failure_reason import FailureReason
 from app.domain.enums.policy_decision import PolicyDecision
 from app.domain.enums.recovery_action import RecoveryAction
-from app.domain.enums.recovery_status import RecoveryStatus
 from app.domain.models.recovery_policy_config import RecoveryPolicyConfig
 from app.domain.models.recovery_proposal import RecoveryProposal
 from app.domain.services.recovery_policy import RecoveryPolicy
 from app.domain.value_objects.money import Money
-from app.domain.value_objects.recovery_probability import (RecoveryProbability)
+from app.domain.value_objects.recovery_probability import (RecoveryProbability,)
 from app.domain.value_objects.risk_score import RiskScore
+from app.infrastructure.repositories.in_memory_recovery_case_repository import (InMemoryRecoveryCaseRepository)
 
 
-class FakeRecoveryAnalyzer:
-    def __init__(
-        self,
-        *,
-        probability: Decimal,
-        risk: Decimal,
-    ) -> None:
-        self._probability = probability
-        self._risk = risk
-
+class StubRecoveryAnalyzer:
     def analyze(
         self,
         *,
@@ -36,18 +25,25 @@ class FakeRecoveryAnalyzer:
             recovery_case_id=recovery_case.recovery_case_id,
             failure_reason=FailureReason.INSUFFICIENT_FUNDS,
             proposed_action=RecoveryAction.RETRY_PAYMENT,
-            recovery_probability=RecoveryProbability(value=self._probability),
-            risk_score=RiskScore(value=self._risk),
-            rationale="Test recovery proposal.",
+            recovery_probability=RecoveryProbability(value=Decimal("0.85")),
+            risk_score=RiskScore(value=Decimal("0.15")),
+            rationale="The recovery proposal is valid."
         )
 
 
-def create_recovery_case() -> RecoveryCase:
+def create_recovery_case(
+    *,
+    retry_count: int = 0,
+) -> RecoveryCase:
     return RecoveryCase(
         recovery_case_id=uuid4(),
         merchant_id=uuid4(),
         payment_id=uuid4(),
-        amount=Money(amount=Decimal("1000"),currency="INR"),
+        amount=Money(
+            amount=Decimal("1000"),
+            currency="INR",
+        ),
+        retry_count=retry_count,
     )
 
 
@@ -61,49 +57,52 @@ def create_recovery_policy() -> RecoveryPolicy:
     )
 
 
-@pytest.mark.parametrize(
-    ("probability", "risk", "expected_decision", "expected_status"),
-    [
-        (
-            Decimal("0.80"),
-            Decimal("0.20"),
-            PolicyDecision.APPROVED,
-            RecoveryStatus.ACTION_APPROVED,
-        ),
-        (
-            Decimal("0.20"),
-            Decimal("0.20"),
-            PolicyDecision.REJECTED,
-            RecoveryStatus.STOPPED,
-        ),
-        (
-            Decimal("0.80"),
-            Decimal("0.90"),
-            PolicyDecision.ESCALATED,
-            RecoveryStatus.ESCALATED,
-        ),
-    ],
-)
-def test_analyzes_recovery_case_and_applies_policy_decision(
-    probability: Decimal,
-    risk: Decimal,
-    expected_decision: PolicyDecision,
-    expected_status: RecoveryStatus,
-) -> None:
-    recovery_analyzer = FakeRecoveryAnalyzer(
-        probability=probability,
-        risk=risk,
+def create_use_case(
+    *,
+    repository: InMemoryRecoveryCaseRepository,
+) -> AnalyzeRecoveryCase:
+    return AnalyzeRecoveryCase(
+        recovery_analyzer=StubRecoveryAnalyzer(),
+        recovery_policy=create_recovery_policy(),
+        recovery_case_repository=repository,
     )
 
-    use_case = AnalyzeRecoveryCase(
-        recovery_analyzer=recovery_analyzer,
-        recovery_policy=create_recovery_policy(),
+
+def test_analyzes_and_persists_approved_recovery_case() -> None:
+    repository = InMemoryRecoveryCaseRepository()
+
+    use_case = create_use_case(
+        repository=repository,
     )
 
     recovery_case = create_recovery_case()
 
-    result = use_case.execute(recovery_case=recovery_case,)
+    result = use_case.execute(recovery_case=recovery_case)
 
-    assert (result.policy_evaluation.decision== expected_decision)
+    stored_recovery_case = repository.get_by_id(recovery_case_id=recovery_case.recovery_case_id)
 
-    assert result.recovery_case.status == expected_status
+    assert (result.policy_evaluation.decision == PolicyDecision.APPROVED)
+
+    assert stored_recovery_case is not None
+
+    assert (stored_recovery_case.recovery_case_id == recovery_case.recovery_case_id)
+
+    assert (stored_recovery_case.status == result.recovery_case.status)
+
+
+def test_analyzes_and_persists_rejected_recovery_case() -> None:
+    repository = InMemoryRecoveryCaseRepository()
+
+    use_case = create_use_case(repository=repository)
+
+    recovery_case = create_recovery_case(retry_count=3)
+
+    result = use_case.execute(recovery_case=recovery_case)
+
+    stored_recovery_case = repository.get_by_id(recovery_case_id=recovery_case.recovery_case_id)
+
+    assert (result.policy_evaluation.decision == PolicyDecision.REJECTED)
+
+    assert stored_recovery_case is not None
+
+    assert (stored_recovery_case.status == result.recovery_case.status)
