@@ -24,3 +24,11 @@ class InvalidRecoveryCaseError(DomainError):
 
 class InvalidRecoveryProposalError(DomainError):
     """Raised when a recovery proposal violates a domain invariant."""
+
+
+class InvalidPolicyEvaluationError(DomainError):
+    """Raised when a policy evaluation violates a domain invariant."""
+
+
+class InvalidRecoveryPolicyConfigError(DomainError):
+    """Raised when recovery policy configuration is invalid."""
