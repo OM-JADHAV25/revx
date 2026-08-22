@@ -7,10 +7,14 @@ from app.core.config import Settings
 
 
 def test_uses_default_settings() -> None:
-    settings = Settings(_env_file=None)
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+psycopg://localhost:5432/revx",
+    )
 
     assert settings.app_name == "RevX"
     assert settings.app_version == "0.1.0"
+
     assert settings.minimum_recovery_probability == Decimal("0.40")
     assert settings.maximum_risk_score == Decimal("0.70")
     assert settings.maximum_retry_count == 3
@@ -20,6 +24,7 @@ def test_uses_default_settings() -> None:
 def test_accepts_valid_custom_settings() -> None:
     settings = Settings(
         _env_file=None,
+        database_url="postgresql+psycopg://localhost:5432/revx",
         minimum_recovery_probability=Decimal("0.50"),
         maximum_risk_score=Decimal("0.60"),
         maximum_retry_count=5,

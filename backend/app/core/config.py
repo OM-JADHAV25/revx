@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     app_name: str = "RevX"
     app_version: str = "0.1.0"
 
+    database_url: str
+
     minimum_recovery_probability: Decimal = Field(
         default=Decimal("0.40"),
         ge=Decimal("0"),
