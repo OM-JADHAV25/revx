@@ -27,3 +27,6 @@ class InvalidRecoveryPolicyConfigError(DomainError):
 
 class InvalidRuleBasedAnalyzerConfigError(DomainError):
     """Raised when rule-based analyzer configuration is invalid."""
+
+class RecoveryCaseConcurrencyError(DomainError):
+    """Raised when a recovery case is modified concurrently."""

@@ -2,14 +2,16 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.domain.entities.recovery_case import RecoveryCase
 from app.domain.value_objects.money import Money
+from app.domain.exceptions import RecoveryCaseConcurrencyError
 from app.domain.value_objects.recovery_probability import (RecoveryProbability)
 from app.domain.value_objects.risk_score import RiskScore
 from app.infrastructure.persistence.models.recovery_case_model import (RecoveryCaseModel)
+from app.domain.entities.recovery_case import RecoveryCase
 
 
 class SQLAlchemyRecoveryCaseRepository:
@@ -31,6 +33,8 @@ class SQLAlchemyRecoveryCaseRepository:
 
         self._session.add(model)
         self._session.commit()
+
+        recovery_case.mark_persisted()
 
     def get_by_id(
         self,
@@ -54,22 +58,51 @@ class SQLAlchemyRecoveryCaseRepository:
         *,
         recovery_case: RecoveryCase,
     ) -> None:
-        model = self._session.get(
-            RecoveryCaseModel,
-            recovery_case.recovery_case_id,
-        )
+        """Persist changes using optimistic concurrency control."""
 
-        if model is None:
-            raise ValueError(
-                "Recovery case does not exist."
+        expected_version = recovery_case.persisted_version
+
+        statement = (
+            update(RecoveryCaseModel)
+            .where(
+                RecoveryCaseModel.recovery_case_id
+                == recovery_case.recovery_case_id,
+                RecoveryCaseModel.version == expected_version,
             )
-
-        self._update_model(
-            model=model,
-            recovery_case=recovery_case,
+            .values(
+                merchant_id=recovery_case.merchant_id,
+                payment_id=recovery_case.payment_id,
+                customer_id=recovery_case.customer_id,
+                subscription_id=recovery_case.subscription_id,
+                amount=recovery_case.amount.amount,
+                currency=recovery_case.amount.currency,
+                status=recovery_case.status,
+                recovery_probability=(
+                    recovery_case.recovery_probability.value
+                    if recovery_case.recovery_probability is not None
+                    else None
+                ),
+                risk_score=(
+                    recovery_case.risk_score.value
+                    if recovery_case.risk_score is not None
+                    else None
+                ),
+                retry_count=recovery_case.retry_count,
+                version=recovery_case.version,
+                updated_at=recovery_case.updated_at,
+            )
         )
+
+        result = self._session.execute(statement)
+
+        if result.rowcount != 1:
+            self._session.rollback()
+
+            raise RecoveryCaseConcurrencyError("Recovery case was modified concurrently.")
 
         self._session.commit()
+
+        recovery_case.mark_persisted()
 
     @staticmethod
     def _to_model(
@@ -106,7 +139,7 @@ class SQLAlchemyRecoveryCaseRepository:
         *,
         model: RecoveryCaseModel,
     ) -> RecoveryCase:
-        return RecoveryCase(
+        recovery_case = RecoveryCase(
             recovery_case_id=model.recovery_case_id,
             merchant_id=model.merchant_id,
             payment_id=model.payment_id,
@@ -137,34 +170,6 @@ class SQLAlchemyRecoveryCaseRepository:
             updated_at=model.updated_at,
         )
 
-    @staticmethod
-    def _update_model(
-        *,
-        model: RecoveryCaseModel,
-        recovery_case: RecoveryCase,
-    ) -> None:
-        model.merchant_id = recovery_case.merchant_id
-        model.payment_id = recovery_case.payment_id
-        model.customer_id = recovery_case.customer_id
-        model.subscription_id = recovery_case.subscription_id
+        recovery_case.mark_persisted()
 
-        model.amount = recovery_case.amount.amount
-        model.currency = recovery_case.amount.currency
-
-        model.status = recovery_case.status
-
-        model.recovery_probability = (
-            recovery_case.recovery_probability.value
-            if recovery_case.recovery_probability is not None
-            else None
-        )
-
-        model.risk_score = (
-            recovery_case.risk_score.value
-            if recovery_case.risk_score is not None
-            else None
-        )
-
-        model.retry_count = recovery_case.retry_count
-        model.version = recovery_case.version
-        model.updated_at = recovery_case.updated_at
+        return recovery_case

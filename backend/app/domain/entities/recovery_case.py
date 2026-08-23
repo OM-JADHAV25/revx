@@ -30,12 +30,32 @@ class RecoveryCase:
     retry_count: int = 0
     version: int = 1
 
+    _persisted_version: int | None = field(
+        default=None,
+        repr=False,
+    )
+
     created_at: datetime = field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
     updated_at: datetime = field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
+
+    def mark_persisted(self) -> None:
+        """Mark the current aggregate version as persisted."""
+
+        self._persisted_version = self.version
+
+    @property
+    def persisted_version(self) -> int:
+        """Return the version currently persisted in storage."""
+
+        if self._persisted_version is None:
+            return self.version
+
+        return self._persisted_version
+
 
     @classmethod
     def create(
