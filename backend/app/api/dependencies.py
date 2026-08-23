@@ -3,7 +3,8 @@ from __future__ import annotations
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from app.application.use_cases.analyze_recovery_case import (AnalyzeRecoveryCase,)
+from app.application.use_cases.analyze_recovery_case import (AnalyzeRecoveryCase)
+from app.application.use_cases.get_recovery_case import (GetRecoveryCase)
 from app.core.config import get_settings
 from app.domain.models.recovery_policy_config import (RecoveryPolicyConfig,)
 from app.domain.services.recovery_policy import RecoveryPolicy
@@ -47,3 +48,12 @@ def get_analyze_recovery_case_use_case(
         recovery_policy=recovery_policy,
         recovery_case_repository=recovery_case_repository,
     )
+
+def get_recovery_case_use_case(
+    recovery_case_repository: SQLAlchemyRecoveryCaseRepository = Depends(
+        get_recovery_case_repository,
+    ),
+) -> GetRecoveryCase:
+    """Create and return the GetRecoveryCase use case."""
+
+    return GetRecoveryCase(recovery_case_repository=recovery_case_repository)
