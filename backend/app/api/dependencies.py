@@ -12,7 +12,7 @@ from app.infrastructure.analyzers.rule_based_recovery_analyzer import (RuleBased
 from app.infrastructure.analyzers.rule_based_recovery_analyzer_config import (RuleBasedRecoveryAnalyzerConfig,)
 from app.infrastructure.persistence.database import get_db_session
 from app.infrastructure.persistence.repositories.sqlalchemy_recovery_case_repository import (SQLAlchemyRecoveryCaseRepository)
-
+from app.application.use_cases.transition_recovery_case import (TransitionRecoveryCase)
 
 def get_recovery_case_repository(
     session: Session = Depends(get_db_session),
@@ -57,3 +57,13 @@ def get_recovery_case_use_case(
     """Create and return the GetRecoveryCase use case."""
 
     return GetRecoveryCase(recovery_case_repository=recovery_case_repository)
+
+
+def get_transition_recovery_case_use_case(
+    recovery_case_repository: SQLAlchemyRecoveryCaseRepository = Depends(
+        get_recovery_case_repository,
+    ),
+) -> TransitionRecoveryCase:
+    """Create and return the TransitionRecoveryCase use case."""
+
+    return TransitionRecoveryCase(recovery_case_repository=recovery_case_repository)
