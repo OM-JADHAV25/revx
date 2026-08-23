@@ -28,6 +28,19 @@ class InMemoryRecoveryCaseRepository:
     ) -> RecoveryCase | None:
         return self._recovery_cases.get(recovery_case_id)
 
+    def get_by_payment_id(
+        self,
+        *,
+        payment_id: UUID,
+    ) -> RecoveryCase | None:
+        """Return a recovery case associated with a payment."""
+
+        for recovery_case in self._recovery_cases.values():
+            if recovery_case.payment_id == payment_id:
+                return recovery_case
+
+        return None
+
     def update(
         self,
         *,

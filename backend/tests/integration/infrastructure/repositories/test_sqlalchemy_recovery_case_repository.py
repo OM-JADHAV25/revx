@@ -108,3 +108,31 @@ def test_update_persists_recovery_case_changes() -> None:
     assert retrieved_case.retry_count == 1
 
     assert retrieved_case.version == 2
+
+
+def test_get_by_payment_id_returns_matching_recovery_case() -> None:
+    session = create_test_session()
+
+    repository = SQLAlchemyRecoveryCaseRepository(session=session)
+
+    recovery_case = create_recovery_case()
+
+    repository.add(recovery_case=recovery_case)
+
+    retrieved_case = repository.get_by_payment_id(payment_id=recovery_case.payment_id)
+
+    assert retrieved_case is not None
+
+    assert (retrieved_case.recovery_case_id == recovery_case.recovery_case_id)
+
+    assert (retrieved_case.payment_id == recovery_case.payment_id)
+
+
+def test_get_by_payment_id_returns_none_when_case_does_not_exist() -> None:
+    session = create_test_session()
+
+    repository = SQLAlchemyRecoveryCaseRepository(session=session)
+
+    recovery_case = repository.get_by_payment_id(payment_id=uuid4())
+
+    assert recovery_case is None

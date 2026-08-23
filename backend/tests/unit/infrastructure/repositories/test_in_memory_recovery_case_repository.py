@@ -71,3 +71,23 @@ def test_rejects_updating_nonexistent_recovery_case() -> None:
 
     with pytest.raises(ValueError):
         repository.update(recovery_case=recovery_case)
+
+
+def test_get_by_payment_id_returns_matching_recovery_case() -> None:
+    repository = InMemoryRecoveryCaseRepository()
+
+    recovery_case = create_recovery_case()
+
+    repository.add(recovery_case=recovery_case)
+
+    retrieved_case = repository.get_by_payment_id(payment_id=recovery_case.payment_id)
+
+    assert retrieved_case == recovery_case
+
+
+def test_get_by_payment_id_returns_none_when_case_does_not_exist() -> None:
+    repository = InMemoryRecoveryCaseRepository()
+
+    recovery_case = repository.get_by_payment_id(payment_id=uuid4())
+
+    assert recovery_case is None

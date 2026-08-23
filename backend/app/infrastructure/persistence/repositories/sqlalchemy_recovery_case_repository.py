@@ -52,6 +52,24 @@ class SQLAlchemyRecoveryCaseRepository:
 
         return self._to_domain(model=model)
 
+    def get_by_payment_id(
+        self,
+        *,
+        payment_id: UUID,
+    ) -> RecoveryCase | None:
+        """Return a recovery case associated with a payment."""
+
+        statement = select(RecoveryCaseModel).where(
+            RecoveryCaseModel.payment_id == payment_id
+        )
+
+        model = self._session.scalar(statement)
+
+        if model is None:
+            return None
+
+        return self._to_domain(model=model)
+
     def update(
         self,
         *,

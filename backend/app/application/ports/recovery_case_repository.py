@@ -23,6 +23,13 @@ class RecoveryCaseRepository(Protocol):
     ) -> RecoveryCase | None:
         """Return a recovery case by its identifier."""
 
+    def get_by_payment_id(
+        self,
+        *,
+        payment_id: UUID,
+    ) -> RecoveryCase | None:
+        """Return a recovery case associated with a payment."""
+
     def update(
         self,
         *,
