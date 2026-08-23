@@ -11,7 +11,6 @@ from app.domain.exceptions import RecoveryCaseConcurrencyError
 from app.domain.value_objects.recovery_probability import (RecoveryProbability)
 from app.domain.value_objects.risk_score import RiskScore
 from app.infrastructure.persistence.models.recovery_case_model import (RecoveryCaseModel)
-from app.domain.entities.recovery_case import RecoveryCase
 
 
 class SQLAlchemyRecoveryCaseRepository:
