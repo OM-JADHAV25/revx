@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
+import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
@@ -26,15 +28,18 @@ def create_test_session() -> Session:
     return Session(engine)
 
 
-def create_recovery_case() -> RecoveryCase:
-    return RecoveryCase.create(
-        merchant_id=uuid4(),
-        payment_id=uuid4(),
-        amount=Money(
-            amount=Decimal("1000.00"),
-            currency="INR",
-        ),
-    )
+def create_recovery_case(
+    *,
+    payment_id: UUID | None = None,
+    ) -> RecoveryCase:
+        return RecoveryCase.create(
+            merchant_id=uuid4(),
+            payment_id=payment_id or uuid4(),
+            amount=Money(
+                amount=Decimal("1000.00"),
+                currency="INR"
+            )
+        )
 
 
 def test_add_and_get_by_id() -> None:
@@ -136,3 +141,20 @@ def test_get_by_payment_id_returns_none_when_case_does_not_exist() -> None:
     recovery_case = repository.get_by_payment_id(payment_id=uuid4())
 
     assert recovery_case is None
+
+
+def test_rejects_duplicate_payment_id_at_database_level() -> None:
+    session = create_test_session()
+
+    repository = SQLAlchemyRecoveryCaseRepository(session=session)
+
+    payment_id = uuid4()
+
+    first_recovery_case = create_recovery_case(payment_id=payment_id)
+
+    second_recovery_case = create_recovery_case(payment_id=payment_id)
+
+    repository.add(recovery_case=first_recovery_case)
+
+    with pytest.raises(IntegrityError):
+        repository.add(recovery_case=second_recovery_case)
