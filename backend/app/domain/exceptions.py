@@ -30,3 +30,15 @@ class InvalidRuleBasedAnalyzerConfigError(DomainError):
 
 class RecoveryCaseConcurrencyError(DomainError):
     """Raised when a recovery case is modified concurrently."""
+
+class DuplicatePaymentError(DomainError):
+    """Raised when a recovery case already exists for a payment."""
+
+    def __init__(
+        self,
+        *,
+        payment_id: str,
+    ) -> None:
+        super().__init__(
+            f"A recovery case already exists for payment {payment_id}."
+        )

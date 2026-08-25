@@ -3,9 +3,11 @@ from __future__ import annotations
 from uuid import UUID
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.domain.entities.recovery_case import RecoveryCase
+from app.domain.exceptions import (DuplicatePaymentError,RecoveryCaseConcurrencyError)
 from app.domain.value_objects.money import Money
 from app.domain.exceptions import RecoveryCaseConcurrencyError
 from app.domain.value_objects.recovery_probability import (RecoveryProbability)
@@ -28,10 +30,20 @@ class SQLAlchemyRecoveryCaseRepository:
         *,
         recovery_case: RecoveryCase,
     ) -> None:
-        model = self._to_model(recovery_case=recovery_case)
+        model = self._to_model(
+            recovery_case=recovery_case,
+        )
 
-        self._session.add(model)
-        self._session.commit()
+        try:
+            self._session.add(model)
+            self._session.commit()
+
+        except IntegrityError as exc:
+            self._session.rollback()
+
+            raise DuplicatePaymentError(
+                payment_id=str(recovery_case.payment_id),
+            ) from exc
 
         recovery_case.mark_persisted()
 

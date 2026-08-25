@@ -4,10 +4,10 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from app.domain.exceptions import DuplicatePaymentError
 from app.domain.entities.recovery_case import RecoveryCase
 from app.domain.enums.recovery_status import RecoveryStatus
 from app.domain.value_objects.money import Money
@@ -156,7 +156,7 @@ def test_rejects_duplicate_payment_id_at_database_level() -> None:
 
     repository.add(recovery_case=first_recovery_case)
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(DuplicatePaymentError):
         repository.add(recovery_case=second_recovery_case)
 
 
@@ -175,7 +175,7 @@ def test_database_rejects_duplicate_payment_id() -> None:
 
     repository.add(recovery_case=first_recovery_case,)
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(DuplicatePaymentError):
         repository.add(recovery_case=second_recovery_case)
 
     session.rollback()
