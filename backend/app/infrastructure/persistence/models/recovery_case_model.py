@@ -32,6 +32,7 @@ class RecoveryCaseModel(Base):
     payment_id: Mapped[UUID] = mapped_column(
         PostgreSQLUUID(as_uuid=True),
         nullable=False,
+        unique=True,
         index=True,
     )
 
