@@ -158,3 +158,32 @@ def test_rejects_duplicate_payment_id_at_database_level() -> None:
 
     with pytest.raises(IntegrityError):
         repository.add(recovery_case=second_recovery_case)
+
+
+def test_database_rejects_duplicate_payment_id() -> None:
+    """Database must enforce one recovery case per payment."""
+
+    session = create_test_session()
+
+    repository = SQLAlchemyRecoveryCaseRepository(session=session)
+
+    payment_id = uuid4()
+
+    first_recovery_case = create_recovery_case(payment_id=payment_id)
+
+    second_recovery_case = create_recovery_case(payment_id=payment_id)
+
+    repository.add(recovery_case=first_recovery_case,)
+
+    with pytest.raises(IntegrityError):
+        repository.add(recovery_case=second_recovery_case)
+
+    session.rollback()
+
+    stored_recovery_case = repository.get_by_payment_id(payment_id=payment_id)
+
+    assert stored_recovery_case is not None
+
+    assert (stored_recovery_case.recovery_case_id == first_recovery_case.recovery_case_id)
+
+    assert stored_recovery_case.payment_id == payment_id
