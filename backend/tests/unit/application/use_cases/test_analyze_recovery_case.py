@@ -106,3 +106,31 @@ def test_analyzes_and_persists_rejected_recovery_case() -> None:
     assert stored_recovery_case is not None
 
     assert (stored_recovery_case.status == result.recovery_case.status)
+
+
+def test_returns_existing_recovery_case_for_duplicate_payment() -> None:
+    repository = InMemoryRecoveryCaseRepository()
+
+    use_case = create_use_case(repository=repository)
+
+    original_recovery_case = create_recovery_case()
+
+    original_result = use_case.execute(recovery_case=original_recovery_case)
+
+    duplicate_recovery_case = RecoveryCase(
+        recovery_case_id=uuid4(),
+        merchant_id=original_recovery_case.merchant_id,
+        payment_id=original_recovery_case.payment_id,
+        amount=original_recovery_case.amount,
+    )
+
+    duplicate_result = use_case.execute(recovery_case=duplicate_recovery_case)
+
+    assert (duplicate_result.recovery_case.recovery_case_id == original_result.recovery_case.recovery_case_id)
+
+    assert (duplicate_result.recovery_case.payment_id == original_result.recovery_case.payment_id)
+
+    assert (
+        repository.get_by_id(recovery_case_id=duplicate_recovery_case.recovery_case_id)
+        is None
+    )

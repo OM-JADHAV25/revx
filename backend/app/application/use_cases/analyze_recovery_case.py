@@ -30,7 +30,32 @@ class AnalyzeRecoveryCase:
         *,
         recovery_case: RecoveryCase,
     ) -> AnalyzeRecoveryCaseResult:
-        self._recovery_case_repository.add(recovery_case=recovery_case)
+
+        existing_recovery_case = (
+            self._recovery_case_repository.get_by_payment_id(
+                payment_id=recovery_case.payment_id,
+            )
+        )
+
+        if existing_recovery_case is not None:
+            proposal = self._recovery_analyzer.analyze(
+                recovery_case=existing_recovery_case
+            )
+
+            policy_evaluation = self._recovery_policy.evaluate(
+                recovery_case=existing_recovery_case,
+                proposal=proposal,
+            )
+
+            return AnalyzeRecoveryCaseResult(
+                recovery_case=existing_recovery_case,
+                proposal=proposal,
+                policy_evaluation=policy_evaluation,
+            )
+
+        self._recovery_case_repository.add(
+            recovery_case=recovery_case,
+        )
 
         # DETECTED -> ANALYZING
         recovery_case.transition_to(
@@ -47,6 +72,7 @@ class AnalyzeRecoveryCase:
         )
 
         if policy_evaluation.decision == PolicyDecision.APPROVED:
+
             # ANALYZING -> ELIGIBLE
             recovery_case.transition_to(
                 target_status=RecoveryStatus.ELIGIBLE,
@@ -61,7 +87,9 @@ class AnalyzeRecoveryCase:
             recovery_case.transition_to(
                 target_status=RecoveryStatus.ACTION_APPROVED,
             )
+
         else:
+
             # ANALYZING -> STOPPED
             recovery_case.transition_to(
                 target_status=RecoveryStatus.STOPPED,

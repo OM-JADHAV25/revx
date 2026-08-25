@@ -1,5 +1,6 @@
-from fastapi.testclient import TestClient
 from uuid import uuid4
+
+from fastapi.testclient import TestClient
 
 from app.main import create_application
 
@@ -10,18 +11,31 @@ def create_client() -> TestClient:
     return TestClient(application)
 
 
+def create_request_payload(
+    *,
+    amount: int,
+    retry_count: int,
+) -> dict[str, object]:
+    """Create a unique recovery case request payload."""
+
+    return {
+        "merchant_id": str(uuid4()),
+        "payment_id": str(uuid4()),
+        "amount": amount,
+        "currency": "INR",
+        "retry_count": retry_count,
+    }
+
+
 def test_analyze_recovery_case_returns_approved_action() -> None:
     client = create_client()
 
     response = client.post(
         "/recovery-cases/analyze",
-        json={
-            "merchant_id": "11111111-1111-1111-1111-111111111111",
-            "payment_id": "22222222-2222-2222-2222-222222222222",
-            "amount": 1000,
-            "currency": "INR",
-            "retry_count": 0,
-        },
+        json=create_request_payload(
+            amount=1000,
+            retry_count=0,
+        ),
     )
 
     assert response.status_code == 200
@@ -40,13 +54,10 @@ def test_analyze_recovery_case_approves_high_value_payment() -> None:
 
     response = client.post(
         "/recovery-cases/analyze",
-        json={
-            "merchant_id": "11111111-1111-1111-1111-111111111111",
-            "payment_id": "22222222-2222-2222-2222-222222222222",
-            "amount": 10000,
-            "currency": "INR",
-            "retry_count": 0,
-        },
+        json=create_request_payload(
+            amount=10000,
+            retry_count=0,
+        ),
     )
 
     assert response.status_code == 200
@@ -65,13 +76,10 @@ def test_analyze_recovery_case_rejects_retry_limit() -> None:
 
     response = client.post(
         "/recovery-cases/analyze",
-        json={
-            "merchant_id": "11111111-1111-1111-1111-111111111111",
-            "payment_id": "22222222-2222-2222-2222-222222222222",
-            "amount": 1000,
-            "currency": "INR",
-            "retry_count": 3,
-        },
+        json=create_request_payload(
+            amount=1000,
+            retry_count=3,
+        ),
     )
 
     assert response.status_code == 200
@@ -88,13 +96,10 @@ def test_analyze_recovery_case_rejects_invalid_amount() -> None:
 
     response = client.post(
         "/recovery-cases/analyze",
-        json={
-            "merchant_id": "11111111-1111-1111-1111-111111111111",
-            "payment_id": "22222222-2222-2222-2222-222222222222",
-            "amount": 0,
-            "currency": "INR",
-            "retry_count": 0,
-        },
+        json=create_request_payload(
+            amount=0,
+            retry_count=0,
+        ),
     )
 
     assert response.status_code == 422
@@ -105,13 +110,10 @@ def test_analyze_recovery_case_rejects_negative_retry_count() -> None:
 
     response = client.post(
         "/recovery-cases/analyze",
-        json={
-            "merchant_id": "11111111-1111-1111-1111-111111111111",
-            "payment_id": "22222222-2222-2222-2222-222222222222",
-            "amount": 1000,
-            "currency": "INR",
-            "retry_count": -1,
-        },
+        json=create_request_payload(
+            amount=1000,
+            retry_count=-1,
+        ),
     )
 
     assert response.status_code == 422
@@ -120,15 +122,14 @@ def test_analyze_recovery_case_rejects_negative_retry_count() -> None:
 def test_get_recovery_case_returns_existing_case() -> None:
     client = create_client()
 
+    payload = create_request_payload(
+        amount=1000,
+        retry_count=0,
+    )
+
     create_response = client.post(
         "/recovery-cases/analyze",
-        json={
-            "merchant_id": "11111111-1111-1111-1111-111111111111",
-            "payment_id": "22222222-2222-2222-2222-222222222222",
-            "amount": 1000,
-            "currency": "INR",
-            "retry_count": 0,
-        },
+        json=payload,
     )
 
     assert create_response.status_code == 200
@@ -144,8 +145,8 @@ def test_get_recovery_case_returns_existing_case() -> None:
     body = response.json()
 
     assert body["recovery_case_id"] == recovery_case_id
-    assert body["merchant_id"] == ("11111111-1111-1111-1111-111111111111")
-    assert body["payment_id"] == ("22222222-2222-2222-2222-222222222222")
+    assert body["merchant_id"] == payload["merchant_id"]
+    assert body["payment_id"] == payload["payment_id"]
     assert body["amount"] == "1000"
     assert body["currency"] == "INR"
 

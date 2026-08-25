@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -9,12 +11,8 @@ def create_recovery_case(client: TestClient) -> str:
     response = client.post(
         "/recovery-cases/analyze",
         json={
-            "merchant_id": (
-                "11111111-1111-1111-1111-111111111111"
-            ),
-            "payment_id": (
-                "22222222-2222-2222-2222-222222222222"
-            ),
+            "merchant_id": str(uuid4()),
+            "payment_id": str(uuid4()),
             "amount": 1000,
             "currency": "INR",
             "retry_count": 0,
@@ -42,7 +40,9 @@ def test_transitions_recovery_case_successfully() -> None:
 
         response = client.patch(
             f"/recovery-cases/{recovery_case_id}/status",
-            json={"target_status": "executing"},
+            json={
+                "target_status": "executing",
+            },
         )
 
         assert response.status_code == 200
@@ -59,8 +59,7 @@ def test_returns_404_when_transitioning_missing_recovery_case() -> None:
 
     with TestClient(app) as client:
         response = client.patch(
-            "/recovery-cases/"
-            "11111111-1111-1111-1111-111111111111/status",
+            f"/recovery-cases/{uuid4()}/status",
             json={
                 "target_status": "analyzing",
             },
@@ -68,7 +67,9 @@ def test_returns_404_when_transitioning_missing_recovery_case() -> None:
 
         assert response.status_code == 404
 
-        assert response.json() == {"detail": "Recovery case not found."}
+        assert response.json() == {
+            "detail": "Recovery case not found."
+        }
 
 
 def test_returns_409_for_invalid_recovery_case_transition() -> None:
